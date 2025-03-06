@@ -1,50 +1,44 @@
 import streamlit as st
 import requests
 
-BASE_URL = "http://127.0.0.1:5000"
+# Backend API endpoint
+BASE_URL = "http://127.0.0.1:5000"  # Change to your deployed backend URL if needed
 
-st.title("Daily Step Tracker")
+# Function to register a new user
+def register_user(username, password):
+    response = requests.post(f"{BASE_URL}/register", json={"username": username, "password": password})
+    return response.json()
 
-# User Authentication
-if "username" not in st.session_state:
-    st.session_state.username = None
+# Function to authenticate login
+def login_user(username, password):
+    response = requests.post(f"{BASE_URL}/login", json={"username": username, "password": password})
+    return response.json()
 
-# Login Form
-if st.session_state.username is None:
+# Streamlit UI
+st.title("Step Tracker - Login & Registration")
+
+# Select Login or Register
+page = st.radio("Choose an option:", ["Login", "Register"])
+
+if page == "Register":
+    st.subheader("Create an Account")
+    new_username = st.text_input("Username")
+    new_password = st.text_input("Password", type="password")
+    if st.button("Register"):
+        if new_username and new_password:
+            result = register_user(new_username, new_password)
+            st.success(result.get("message", "Registration successful!"))
+        else:
+            st.warning("Please enter a username and password.")
+
+elif page == "Login":
     st.subheader("Login")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-
     if st.button("Login"):
-        response = requests.post(f"{BASE_URL}/login", json={"username": username, "password": password})
-        if response.status_code == 200:
-            st.session_state.username = response.json()["username"]
+        result = login_user(username, password)
+        if "token" in result:
             st.success("Login successful!")
-            st.experimental_rerun()
+            # Redirect or show the dashboard
         else:
-            st.error("Invalid username or password")
-
-# If logged in, show step tracking features
-if st.session_state.username:
-    st.subheader("Track Your Steps")
-
-    # Step Input
-    date = st.date_input("Select Date")
-    steps = st.number_input("Enter Steps", min_value=0, step=1)
-
-    if st.button("Add Step Data"):
-        response = requests.post(f"{BASE_URL}/add_step", json={"username": st.session_state.username, "date": str(date), "steps": steps})
-        if response.status_code == 201:
-            st.success("Step data added successfully!")
-        else:
-            st.error("Error adding step data")
-
-    # Show Step Data
-    st.subheader("Your Step History")
-    response = requests.get(f"{BASE_URL}/get_steps/{st.session_state.username}")
-    if response.status_code == 200:
-        step_data = response.json()
-        for record in step_data:
-            st.write(f"📅 {record['date']} - 🚶 {record['steps']} steps")
-    else:
-        st.write("No step data available")
+            st.error(result.get("error", "Login failed!"))

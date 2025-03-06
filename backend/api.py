@@ -1,36 +1,48 @@
 from flask import Flask, request, jsonify
-from firebase_config import db
+from firebase_admin import firestore
+import firebase_admin
+from firebase_admin import credentials
+
+# Initialize Firebase Admin
+if not firebase_admin._apps:
+    cred = credentials.Certificate("backend/firebase_credentials.json")
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+users_ref = db.collection("users")
 
 app = Flask(__name__)
 
-# Add Step Data for User
-@app.route("/add_step", methods=["POST"])
-def add_step():
+# Register User
+@app.route("/register", methods=["POST"])
+def register():
     data = request.json
     username = data.get("username")
-    date = data.get("date")
-    steps = data.get("steps")
+    password = data.get("password")  # Hash this in production!
 
-    user_ref = db.collection("users").document(username)
-    if not user_ref.get().exists:
-        return jsonify({"error": "User not found"}), 404
+    if not username or not password:
+        return jsonify({"error": "Missing username or password"}), 400
 
-    steps_ref = user_ref.collection("steps").document(date)
-    steps_ref.set({"date": date, "steps": steps})
+    # Check if user already exists
+    if users_ref.document(username).get().exists:
+        return jsonify({"error": "User already exists"}), 409
 
-    return jsonify({"message": "Step record added!"}), 201
+    # Store user in Firebase
+    users_ref.document(username).set({"password": password})
+    return jsonify({"message": "User registered successfully!"}), 201
 
-# Retrieve User Step Data
-@app.route("/get_steps/<username>", methods=["GET"])
-def get_steps(username):
-    user_ref = db.collection("users").document(username)
-    if not user_ref.get().exists:
-        return jsonify({"error": "User not found"}), 404
+# Login User
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
 
-    steps_ref = user_ref.collection("steps").stream()
-    step_data = [{"date": doc.id, "steps": doc.to_dict()["steps"]} for doc in steps_ref]
+    user_doc = users_ref.document(username).get()
+    if not user_doc.exists or user_doc.to_dict()["password"] != password:
+        return jsonify({"error": "Invalid credentials"}), 401
 
-    return jsonify(step_data), 200
+    return jsonify({"message": "Login successful!", "token": "fake_token"}), 200
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
