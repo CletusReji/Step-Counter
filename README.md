@@ -1,1 +1,2 @@
-# Step-Counter
+# Daily Step Tracker Analysis
+Tracking daily steps is a common way to monitor physical activity and maintain a healthy lifestyle. However, many users struggle to analyze their step count trends over time and gain insights into their activity levels. This project will help participants build a Daily Step Tracker Analysis System that takes step count data, visualizes trends, and provides simple AI-powered insights, such as identifying active vs. inactive days. This project is ideal for beginners looking to apply machine learning to real-world health data in an easy yet meaningful way.
